@@ -73,6 +73,73 @@ jobs:
               sha: context.sha
             })
 
+      # Автонаполнение direct-категории из внешних живых источников.
+      # Без этого шага сборка воспроизводит один и тот же файл: geosite.dat
+      # компилируется только из ./data, а он статичен.
+      #
+      # ⚠ Берём именно Russia/outside — "российские ресурсы, доступные только
+      # для российских подсетей". Это то, что должно идти DIRECT.
+      # Russia/inside у того же автора — ЗАБЛОКИРОВАННОЕ в РФ (1337x, rezka
+      # и т.п.), ему место в proxy. Перепутать = убить доступ к этим сайтам.
+      - name: Enrich category-ru from external sources
+        continue-on-error: true      # источник недоступен — собираем на старых данных
+        run: |
+          set -euo pipefail
+
+          SRC="https://raw.githubusercontent.com/itdoginfo/allow-domains/main/Russia/outside-raw.lst"
+          TARGET="data/category-ru"
+          MARK_BEGIN="# >>> AUTO: itdoginfo/allow-domains Russia/outside >>>"
+          MARK_END="# <<< AUTO: itdoginfo/allow-domains Russia/outside <<<"
+
+          raw=$(mktemp)
+          ${{ env.CURL }} "$SRC" -o "$raw"
+          test -s "$raw"
+
+          # Отсекаем прошлую авто-секцию, оставляя ручные записи нетронутыми.
+          manual=$(mktemp)
+          awk -v b="$MARK_BEGIN" -v e="$MARK_END" '
+            $0==b {skip=1; next}
+            $0==e {skip=0; next}
+            !skip {print}
+          ' "$TARGET" > "$manual"
+
+          # Что уже есть (в любой из direct-категорий) — не дублируем.
+          have=$(mktemp)
+          cat "$manual" data/whitelist data/category-geoblock-ru 2>/dev/null \
+            | sed -E 's/^[[:space:]]*(domain|full|keyword):[[:space:]]*//; s/[[:space:]]*#.*//' \
+            | grep -oE '^[a-z0-9.-]+\.[a-z0-9-]+$' | sort -u > "$have"
+
+          # Валидация: только похожее на домен, без ведущей точки и без
+          # голых TLD (строка вида ".ua" увела бы в direct целую зону).
+          fresh=$(mktemp)
+          tr -d '\r' < "$raw" \
+            | sed -E 's/[[:space:]]*#.*//; s/^\.//; s/^[[:space:]]+//; s/[[:space:]]+$//' \
+            | grep -oE '^[a-z0-9][a-z0-9.-]*\.[a-z0-9-]{2,}$' \
+            | grep -vE '^[a-z0-9-]+$' \
+            | sort -u > "$fresh"
+
+          new=$(comm -23 "$fresh" "$have" || true)
+          count=$(printf '%s\n' "$new" | grep -c . || true)
+          echo "новых доменов к добавлению: $count"
+
+          {
+            cat "$manual"
+            if [ "$count" -gt 0 ]; then
+              echo ""
+              echo "$MARK_BEGIN"
+              echo "# Обновляется автоматически при сборке. Руками не править —"
+              echo "# правки внутри этих маркеров затираются. Ручные записи"
+              echo "# добавляй выше секции."
+              # именно так, а не printf 'domain:%s\n' $new — тот вариант
+              # зависит от word splitting и молча ломается вне bash
+              printf '%s\n' "$new" | sed 's/^/domain:/'
+              echo "$MARK_END"
+            fi
+          } > "$TARGET.tmp"
+          mv -f "$TARGET.tmp" "$TARGET"
+
+          echo "итого строк в $TARGET: $(grep -cvE '^\s*(#|$)' "$TARGET")"
+
       - name: Build geosite.dat
         run: |
           set -euo pipefail
