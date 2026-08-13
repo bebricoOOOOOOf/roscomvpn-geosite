@@ -1,6 +1,12 @@
 name: Build geosite
 on:
   workflow_dispatch:
+  # Апстрим собирал только по push, поэтому сборки встали 15.04.2026,
+  # когда мейнтейнер перестал пушить. Нам нужна регулярность:
+  # v2fly/domain-list-community обновляется постоянно, и каждый прогон
+  # подтягивает свежие домены оттуда даже без изменений в нашем data/.
+  schedule:
+    - cron: "20 3 * * *"   # ежедневно в 03:20 UTC
   push:
     branches:
       - test
@@ -248,16 +254,16 @@ jobs:
         run: |
           cd release || exit 1
           git init
-          git config --local user.name "hydraponique"
-          git config --local user.email "hydraponique@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b release
           git add -A
           git commit -m "Release ${{ env.DAILY_TAG }}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f -u origin release
           cd .. || exit 1
-          git config --local user.name "hydraponique"
-          git config --local user.email "hydraponique@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout master
           git add release/
           git commit -m "Release ${{ env.DAILY_TAG }}" || echo "No changes to commit"
@@ -305,16 +311,16 @@ jobs:
         run: |
           cd release || exit 1
           git init
-          git config --local user.name "hydraponique"
-          git config --local user.email "hydraponique@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b test-release
           git add -A
           git commit -m "Test Release $(date -u +%Y%m%d%H%M)"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f -u origin test-release
           cd .. || exit 1
-          git config --local user.name "hydraponique"
-          git config --local user.email "hydraponique@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B test
           git add release/
           git commit -m "Test Release $(date -u +%Y%m%d%H%M)" || echo "No changes to commit"
@@ -331,10 +337,15 @@ jobs:
             ${{ env.CURL }} -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@test-release/${rel}"
           done
 
-      - name: Trigger routing update
-        if: success() && github.ref_name == 'master'
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.PAT_FOR_ROUTING }}
-          repository: hydraponique/roscomvpn-routing
-          event-type: update-routing-configs
+      # Шаг апстрима, дёргавший hydraponique/roscomvpn-routing, отключён:
+      # это чужой репозиторий, и для него нужен секрет PAT_FOR_ROUTING,
+      # которого у нас нет — шаг бы просто падал каждый прогон.
+      # Свой профиль Happ мы обновляем не отсюда, а из update-geo.sh (§5.5).
+      #
+      # - name: Trigger routing update
+      #   if: success() && github.ref_name == 'master'
+      #   uses: peter-evans/repository-dispatch@v3
+      #   with:
+      #     token: ${{ secrets.PAT_FOR_ROUTING }}
+      #     repository: hydraponique/roscomvpn-routing
+      #     event-type: update-routing-configs
