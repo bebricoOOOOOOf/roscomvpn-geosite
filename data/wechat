@@ -1,0 +1,19 @@
+# WeChat / Weixin — вичат-подмножество апстримного tencent (v2fly domain-list-community, снято 06.11.2026).
+# Цель: прямой доступ из РФ — тексты в РФ не блокируются, а медиа-CDN Tencent с EU-выходов отдаётся плохо
+# (жалобы клиентов: картинки в чатах не грузятся при рабочем туннеле, скрин от 06.11).
+# В шаблонах панели домены внесены явным списком (правка 06.11, vpn-infra/docs/routing/wechat-direct-2026-11-06/),
+# категория — для будущих конфигов и mihomo/sing-box. Игровое/музыкальное/согоу из tencent не тащили.
+# Все поддомены weixin.qq.com (long/short/storage/mmscdn) покрываются qq.com.
+qq.com
+wechat.com
+wechatpay.cn
+weixin.com
+weixinsxy.com
+servicewechat.com
+# картинки и медиа-CDN вичата/QQ
+qpic.cn
+qlogo.cn
+gtimg.cn
+gtimg.com
+gtimg.com.cn
+idqqimg.com
