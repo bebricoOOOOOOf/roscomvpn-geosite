@@ -17,3 +17,9 @@ gtimg.cn
 gtimg.com
 gtimg.com.cn
 idqqimg.com
+# медиа-CDN из апстримного include:qcloud — на бакетах myqcloud.com (COS) вичат раздаёт
+# фото/видео чатов; добалено 06.11 вторым раундом (голосовые уже ходили через qq.com,
+# медиа — нет; см. vpn-infra/docs/routing/media-cdn-direct-2026-11-06/)
+myqcloud.com
+qcloudcdn.com
+myapp.com
